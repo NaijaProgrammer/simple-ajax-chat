@@ -235,7 +235,6 @@ class Chat
 	* - the $chat_id parameter (sent by the client)
 	* represents the id of the last message received by the client. 
 	*/
-	//public function get_messages($chat_id=0, $initial_limit = 50, $ids_only=true)
 	public function get_messages( $chat_id=0, $where=array(), $order=array(), $limit = 0 )
 	{
 		$tp    = $this->get_tables_prefix();
@@ -277,7 +276,7 @@ class Chat
 			}
 			else {
 				$meta_table_alias = $meta_table_aliases[$counter2];
-				"AND {$meta_table_alias}.meta_value = '$value' ";
+				$sql .= "AND {$meta_table_alias}.meta_value = '$value' ";
 				++$counter2;
 			}
 		}
