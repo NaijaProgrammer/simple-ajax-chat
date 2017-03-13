@@ -54,7 +54,7 @@ else if( isset($_GET['get-messages']) ) {
 		$response_data[$i] = array(
 			'id'      => $chat_data['id'], 
 			'status'  => $chat_data['status'], 
-			'message' => $chat_data['message'], 
+			'message' => nl2br( $chat_data['message'] ), 
 			'date'    => $chat_data['date']
 		);
 		
