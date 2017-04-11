@@ -56,6 +56,21 @@ class Chat
 		$dbh     = $this->get_dbh();
 		$tp      = $this->get_tables_prefix();
 		$message = trim($message);
+		
+		$chat_id = $this->insert("{$tp}chat", array(
+			'message' => $message,
+			'status'  => 'pending',
+			'date'    => 'UTC_TIMESTAMP()'
+		));
+		
+		if($chat_id) {
+			$this->set_id($chat_id);
+			return $chat_id;
+		}
+		else {
+			return false;
+		}
+		
 		$sql     = "INSERT INTO {$tp}chat (`message`, `status`, `date`) VALUES ( ?, 'pending', UTC_TIMESTAMP() )";
 		
 		try {
@@ -308,20 +323,27 @@ class Chat
 	{
 		$dbh           = $this->get_dbh();
 		$bind_str      = '';
-		$fields        = '';
 		$placeholders  = '';
 		$values        = array();
+		$sql_terms     = $this->get_sql_terms();
 		
 		if ( empty($table) || empty($data) ) {
 			return false;
 		}
 			
 		foreach( $data AS $column => $value ) {
-			$fields .= "`$column`,";
-			$placeholders .= "?,";
-			$values[] = $value;
+			if( in_array($value, $sql_terms) ) {
+				$placeholders .= "`$column` = $value, ";
+			}
+			else {
+				$placeholders .= "`$column` = ?, "; 
+				$values[] = $value;
+			}
 		}
 		
+		$placeholders = rtrim( trim($placeholders), ',' ); //remove trailing ','
+		$query_str = "INSERT INTO {$table} SET {$placeholders}";
+	 
 		foreach($values AS $value) {
 			switch(gettype($value)) {
 				case 'integer' : $bind_str .= 'i'; break;
@@ -329,20 +351,99 @@ class Chat
 				case 'string'  : $bind_str .= 's'; break;
 			}
 		}
-		
+	 
 		array_unshift($values, $bind_str);
 		
-		$fields = rtrim( trim($fields), ',' );
-		$placeholders = rtrim( trim($placeholders), ',' );
-		
-		$stmt = $dbh->prepare("INSERT INTO {$table} ({$fields}) VALUES ({$placeholders})");
-		
-		call_user_func_array( array($stmt, 'bind_param'), $this->reference_values($values) );
+		try {
 			
-		$stmt->execute();
-			
-		return $stmt->affected_rows ?  $stmt->insert_id : false;
+			$stmt = $dbh->prepare( $query_str );
+	 
+			call_user_func_array( array($stmt, 'bind_param'), $this->reference_values( $values ) );
+	 
+			$stmt->execute();
+	 
+			if($stmt->affected_rows) {
+				$insert_id = $stmt->insert_id;
+			}
+	 
+			$stmt->close();
+	 
+			return $insert_id;
+		}
+		catch(Exception $e) {
+			return null;
+		}
 	}
+
+/*
+function update_table($table, $update_data, $where=array())
+{
+    $where_clause  = '';
+    $placeholders  = '';
+    $bind_str      = '';
+    $update_values = array();
+    $where_values  = array();
+    $sql_terms     = get_sql_terms();
+    $counter       = 0;
+ 
+    foreach( $update_data AS $column => $value ) {
+        if( in_array($value, $sql_terms) ) {
+            $placeholders .= "`$column` = $value, ";
+        }
+        else {
+            $placeholders .= "`$column` = ?, "; 
+            $update_values[] = $value;
+        }
+    }
+ 
+    foreach ( $where as $field => $value ) {
+        if ( $counter > 0 ) {
+            $where_clause .= " AND ";
+        }
+ 
+        $where_clause .= "`$field` = ?";
+        $where_values[] = $value;
+ 
+        ++$counter;
+    }
+ 
+    $placeholders = rtrim( trim($placeholders), ',' ); //remove trailing ','
+ 
+    $query_str = "UPDATE {$table} SET {$placeholders} WHERE {$where_clause}";
+ 
+    $replacement_values = array_merge($update_values, $where_values);
+ 
+    foreach($replacement_values AS $value) {
+ 
+        switch(gettype($value)) {
+            case 'integer' : $bind_str .= 'i'; break;
+            case 'double' : $bind_str .= 'd'; break;
+            case 'string' : $bind_str .= 's'; break;
+        }
+    }
+ 
+    array_unshift($replacement_values, $bind_str);
+ 
+    try {
+        $dbh = get_dbh();
+        $stmt = $dbh->prepare( $query_str );
+ 
+        call_user_func_array( array($stmt, 'bind_param'), reference_values($replacement_values ) );
+ 
+        $stmt->execute();
+ 
+        $affected_rows = $stmt->affected_rows;
+ 
+        $stmt->close();
+ 
+        return $affected_rows;
+    }
+ 
+    catch(Exception $e) {
+        return null;
+    }
+}
+*/
 	
 	protected function update_table($table, $update_data, $where='')
 	{
@@ -353,11 +454,17 @@ class Chat
 		$bind_str       = '';
 		$update_values = array();
 		$where_values  = array();
+		$sql_terms     = get_sql_terms();
 		$count         = 0;
 		
 		foreach( $update_data AS $column => $value ) {
-			$placeholders .= "`$column` = ?, "; 
-			$update_values[] = $value;
+			if( in_array($value, $sql_terms) ) {
+				$placeholders .= "`$column` = $value, ";
+			}
+			else {
+				$placeholders .= "`$column` = ?, "; 
+				$update_values[] = $value;
+			}
 		}
 		
 		foreach ( $where as $field => $value ) {
@@ -371,8 +478,13 @@ class Chat
 			$count++;
 		}
 		
+		/*
 		$placeholders = rtrim( trim($placeholders), ',' );
 		$stmt = $dbh->prepare( "UPDATE {$table} SET {$placeholders} WHERE {$where_clause}" );
+		$replacement_values = array_merge($update_values, $where_values);
+		*/
+		$placeholders = rtrim( trim($placeholders), ',' ); //remove trailing ','
+		$query_str = "UPDATE {$table} SET {$placeholders} WHERE {$where_clause}";
 		$replacement_values = array_merge($update_values, $where_values);
 		
 		foreach($replacement_values AS $value) {
@@ -385,6 +497,7 @@ class Chat
 		
 		array_unshift($replacement_values, $bind_str);
 		
+		$stmt = $dbh->prepare($query_str);
 		call_user_func_array( array($stmt, 'bind_param'), $this->reference_values($replacement_values) );
 		
 		$stmt->execute();
@@ -408,6 +521,11 @@ class Chat
 		return $affected_rows;
 	}
 	
+	protected function get_tables_prefix()
+	{
+		return $this->tables_prefix;
+	}
+	
 	private function reference_values($array)
 	{
 		$refs = array();
@@ -416,11 +534,6 @@ class Chat
 		}
 		
 		return $refs; 
-	}
-	
-	private function get_tables_prefix()
-	{
-		return $this->tables_prefix;
 	}
 	
 	private function set_tables_prefix($prefix)
@@ -524,6 +637,11 @@ class Chat
 		catch(Exception $e) {
 			return null;
 		}
+	}
+	
+	private function get_sql_terms()
+	{
+		return array( 'UTC_TIMESTAMP()' );
 	}
 	
 	private function get_id()
