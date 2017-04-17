@@ -83,8 +83,10 @@ function Chat()
 	}
 
 	return {
-		'postMessage' : postMessage,
-		'getMessages' : getMessages,
-		'setAsRead'   : setAsRead
+		'postMessage'       : postMessage,
+		'getMessages'       : getMessages,
+		'setAsRead'         : setAsRead,
+		'makeRequest'       : makeRequest,
+		'getRequestBaseUrl' : getRequestBaseUrl
 	}
 }
