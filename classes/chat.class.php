@@ -344,21 +344,25 @@ class Chat
 		$placeholders = rtrim( trim($placeholders), ',' ); //remove trailing ','
 		$query_str = "INSERT INTO {$table} SET {$placeholders}";
 	 
-		foreach($values AS $value) {
-			switch(gettype($value)) {
-				case 'integer' : $bind_str .= 'i'; break;
-				case 'double'  : $bind_str .= 'd'; break;
-				case 'string'  : $bind_str .= 's'; break;
+		if( !empty($values) ) {
+			foreach($values AS $value) {
+				switch(gettype($value)) {
+					case 'integer' : $bind_str .= 'i'; break;
+					case 'double'  : $bind_str .= 'd'; break;
+					case 'string'  : $bind_str .= 's'; break;
+				}
 			}
+		 
+			array_unshift($values, $bind_str);
 		}
-	 
-		array_unshift($values, $bind_str);
 		
 		try {
 			
 			$stmt = $dbh->prepare( $query_str );
 	 
-			call_user_func_array( array($stmt, 'bind_param'), $this->reference_values( $values ) );
+			if( !empty($values) ) {
+				call_user_func_array( array($stmt, 'bind_param'), $this->reference_values( $values ) );
+			}
 	 
 			$stmt->execute();
 	 
