@@ -526,6 +526,11 @@ function update_table($table, $update_data, $where=array())
 		return $this->tables_prefix;
 	}
 	
+	protected function get_dbh()
+	{
+		return $this->dbh;
+	}
+	
 	private function reference_values($array)
 	{
 		$refs = array();
@@ -539,11 +544,6 @@ function update_table($table, $update_data, $where=array())
 	private function set_tables_prefix($prefix)
 	{
 		$this->tables_prefix = $prefix;
-	}
-	
-	private function get_dbh()
-	{
-		return $this->dbh;
 	}
 	
 	private function set_dbh($dbh)
